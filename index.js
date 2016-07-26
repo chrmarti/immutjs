@@ -1,54 +1,81 @@
 /// <reference path="typings/index.d.ts" />
 
-const babel = require('babel-core');
 const t = require('babel-types');
 const template = require('babel-template');
-
-const code = `
-var map1 = { a: 1, b: 2, c: 3 };
-var map2 = map2.b = 50;
-map1.b;
-map2.b;
-`;
+const traverse = require('babel-traverse');
 
 const objectExpression = template(`Immutable.Map(OBJECT_EXPRESSION)`);
 const assignmentExpression = template(`OBJECT.set(PROPERTY, EXPRESSION)`);
 const memberExpression = template(`OBJECT.get(PROPERTY)`);
 
+const arrayExpression = template(`Immutable.List(ARRAY_EXPRESSION)`);
+
 function plugin({ types: t }) {
     const seen = new Set();
     return {
-        visitor: {
-            ObjectExpression(path) {
-                if (!seen.has(path.node)) {
-                    seen.add(path.node);
-                    path.replaceWith(objectExpression({ OBJECT_EXPRESSION: path.node }));
+        visitor: traverse.visitors.merge([
+            {
+                ObjectExpression(path) {
+                    if (!seen.has(path.node)) {
+                        seen.add(path.node);
+                        path.replaceWith(objectExpression({ OBJECT_EXPRESSION: path.node }));
+                    }
+                },
+                AssignmentExpression(path) {
+                    const left = path.node.left;
+                    if (t.isMemberExpression(left) && (t.isStringLiteral(left.property) || t.isIdentifier(left.property))) {
+                        const property = left.property;
+                        const name = t.isStringLiteral(property) ? property.value : property.name;
+                        path.replaceWith(assignmentExpression({
+                            OBJECT: left.object,
+                            PROPERTY: t.stringLiteral(name),
+                            EXPRESSION: path.node.right
+                        }));
+                    }
+                },
+                MemberExpression(path) {
+                    const node = path.node;
+                    const property = node.property;
+                    if (!t.isCallExpression(path.parentPath.node) && (t.isStringLiteral(property) || t.isIdentifier(property))) {
+                        const name = t.isStringLiteral(property) ? property.value : property.name;
+                        path.replaceWith(memberExpression({
+                            OBJECT: node.object,
+                            PROPERTY: t.stringLiteral(name)
+                        }));
+                    }
                 }
-            },
-            AssignmentExpression(path) {
-                const left = path.node.left;
-                if (t.isMemberExpression(left)) {
-                    path.replaceWith(assignmentExpression({
-                        OBJECT: left.object,
-                        PROPERTY: t.stringLiteral(left.property.name),
-                        EXPRESSION: path.node.right
-                    }));
-                }
-            },
-            MemberExpression(path) {
-                if (!t.isCallExpression(path.parentPath.node)) {
-                    path.replaceWith(memberExpression({
-                        OBJECT: path.node.object,
-                        PROPERTY: t.stringLiteral(path.node.property.name)
-                    }));
+            }, {
+                ArrayExpression(path) {
+                    if (!seen.has(path.node)) {
+                        seen.add(path.node);
+                        path.replaceWith(arrayExpression({ ARRAY_EXPRESSION: path.node }));
+                    }
+                },
+                AssignmentExpression(path) {
+                    const left = path.node.left;
+                    if (t.isMemberExpression(left) && t.isNumericLiteral(left.property)) {
+                        path.replaceWith(assignmentExpression({
+                            OBJECT: left.object,
+                            PROPERTY: left.property,
+                            EXPRESSION: path.node.right
+                        }));
+                    }
+                },
+                MemberExpression(path) {
+                    const node = path.node;
+                    const property = node.property;
+                    if (!t.isCallExpression(path.parentPath.node) && t.isNumericLiteral(property)) {
+                        path.replaceWith(memberExpression({
+                            OBJECT: node.object,
+                            PROPERTY: property
+                        }));
+                    }
                 }
             }
-        }
+        ])
     };
 }
 
-const result = babel.transform(code, {
-    plugins: [plugin]
-});
-
-console.log(result.code);
+module.exports = {
+    plugin
+};

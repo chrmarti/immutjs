@@ -5,5 +5,11 @@
     "babel-traverse": "registry:dt/babel-traverse#6.7.0+20160423062108",
     "babel-types": "registry:dt/babel-types#6.7.0+20160423062108",
     "babylon": "registry:dt/babylon#6.7.0+20160423062108"
+  },
+  "globalDevDependencies": {
+    "mocha": "registry:env/mocha#2.2.5+20160723033700"
+  },
+  "devDependencies": {
+    "chai": "registry:npm/chai#3.5.0+20160723033700"
   }
 }
