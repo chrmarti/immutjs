@@ -1,15 +1,15 @@
 var gulp = require('gulp');
-var babel = require('babel-core');
-var fs = require('fs');
-var transform = require('./index');
+var rename = require('gulp-rename');
+var immutjs = require('./gulpplugin');
 
-gulp.task('default', function() {
-  console.log('hi');
+gulp.task('default', () => {
+    return gulp.src('*.js')
+        .pipe(immutjs())
+        .pipe(rename(function (path) {
+            path.extname = ".immutable.js"
+        }))
+        .pipe(gulp.dest('build'));
 });
 
-var watcher = gulp.watch('*.js', []);
-watcher.on('change', function(event) {
-  babel.transformFile(event.path, { plugins: [transform.plugin] }, function (err, result) {
-    fs.writeFile('./test.txt', result.code); 
-  });
-});
+var watcher = gulp.watch('*.js', ['default']);
+watcher.on('change', function(event) {});
