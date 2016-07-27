@@ -5,10 +5,19 @@ const template = require('babel-template');
 const traverse = require('babel-traverse');
 
 const objectExpression = template(`Immutable.Map(OBJECT_EXPRESSION)`);
+const arrayExpression = template(`Immutable.List(ARRAY_EXPRESSION)`);
+
 const assignmentExpression = template(`OBJECT.set(PROPERTY, EXPRESSION)`);
 const memberExpression = template(`OBJECT.get(PROPERTY)`);
 
-const arrayExpression = template(`Immutable.List(ARRAY_EXPRESSION)`);
+const libraryImport = template(`const Immutable = require('immutable');`);
+
+const insertLibraryImport = {
+    enter(path) {
+        path.insertBefore(libraryImport());
+        path.stop();
+    }
+};
 
 function plugin({ types: t }) {
     const seen = new Set();
@@ -69,6 +78,12 @@ function plugin({ types: t }) {
                             OBJECT: node.object,
                             PROPERTY: property
                         }));
+                    }
+                }
+            }, {
+                Program(path, state) {
+                    if (state.opts.libraryImport) {
+                        path.traverse(insertLibraryImport);
                     }
                 }
             }

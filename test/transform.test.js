@@ -2,6 +2,8 @@
 
 const assert = require('chai').assert;
 const babel = require('babel-core');
+const fs = require('fs');
+const path = require('path');
 const plugin = require('..').plugin;
 
 describe('transform', () => {
@@ -42,10 +44,27 @@ describe('transform', () => {
             assert.equal(transform('l[1] = "a";'), 'l.set(1, "a");');
         });
     });
+
+    describe('file', () => {
+
+        it('should add library import', done => {
+            transformFile(path.join(__dirname, 'test-source.immut.js'), (err, result) => {
+                assert.notOk(err);
+                assert.equal(result.code, fs.readFileSync(path.join(__dirname, 'test-expected.js'), 'utf-8'));
+                done();
+            });
+        });
+    });
 });
 
 function transform(code) {
     return babel.transform(code, {
         plugins: [plugin]
     }).code;
+}
+
+function transformFile(filepath, callback) {
+    return babel.transformFile(filepath, {
+        plugins: [[plugin, { libraryImport: true }]]
+    }, callback);
 }
