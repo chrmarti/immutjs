@@ -10,23 +10,28 @@ const arrayExpression = template(`Immutable.List(ARRAY_EXPRESSION)`);
 const assignmentExpression = template(`OBJECT.set(PROPERTY, EXPRESSION)`);
 const memberExpression = template(`OBJECT.get(PROPERTY)`);
 
-const libraryImport = template(`const Immutable = require('immutable');`);
+const libraryImport = template(`{ var Immutable = require('immutable');var Range = Immutable.Range; }`);
 
 const insertLibraryImport = {
     enter(path) {
-        path.insertBefore(libraryImport());
+        const node = libraryImport();
+        node.leadingComments = [{
+            type: 'CommentBlock',
+            value: 'verbatim'
+        }];
+        path.insertBefore(node);
         path.stop();
     }
 };
 
 function plugin({ types: t }) {
-    const seen = new Set();
+    const ignore = new Set();
     return {
         visitor: traverse.visitors.merge([
             {
                 ObjectExpression(path) {
-                    if (!seen.has(path.node)) {
-                        seen.add(path.node);
+                    if (!ignore.has(path.node)) {
+                        ignore.add(path.node);
                         path.replaceWith(objectExpression({ OBJECT_EXPRESSION: path.node }));
                     }
                 },
@@ -55,8 +60,8 @@ function plugin({ types: t }) {
                 }
             }, {
                 ArrayExpression(path) {
-                    if (!seen.has(path.node)) {
-                        seen.add(path.node);
+                    if (!ignore.has(path.node)) {
+                        ignore.add(path.node);
                         path.replaceWith(arrayExpression({ ARRAY_EXPRESSION: path.node }));
                     }
                 },
@@ -84,6 +89,11 @@ function plugin({ types: t }) {
                 Program(path, state) {
                     if (state.opts.libraryImport) {
                         path.traverse(insertLibraryImport);
+                    }
+                },
+                BlockStatement(path) {
+                    if ((path.node.leadingComments || []).some(comment => comment.value.trim() === 'verbatim')) {
+                        path.skip();
                     }
                 }
             }

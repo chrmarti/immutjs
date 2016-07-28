@@ -21,9 +21,10 @@ module.exports = function() {
             }));            
         } else if (file.isBuffer()) {
             file.contents = Buffer.from(babelc.transform(file.contents.toString(), {
-                plugins: [transform.plugin]
+                plugins: [[transform.plugin, { libraryImport: true }]]
             }).code);
         }
+        file.path = file.path.replace(/\.immut\.js$/, '.js');
         return callback(null, file);
     });
 };

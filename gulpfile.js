@@ -3,13 +3,13 @@ var rename = require('gulp-rename');
 var immutjs = require('./gulpplugin');
 
 gulp.task('default', () => {
-    return gulp.src('*.js')
+    return gulp.src('examples/*.immut.js')
         .pipe(immutjs())
         .pipe(rename(function (path) {
-            path.extname = ".immutable.js"
+            path.extname = ".plain.js"
         }))
-        .pipe(gulp.dest('build'));
+        .pipe(gulp.dest('examples'));
 });
 
-var watcher = gulp.watch('*.js', ['default']);
+var watcher = gulp.watch('examples/*.immut.js', ['default']);
 watcher.on('change', function(event) {});
